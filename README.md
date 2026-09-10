@@ -48,6 +48,15 @@ npm run dev
 
 ## Despliegue en Railway (pendiente)
 
-El backend lee `MONGODB_URI`, `JWT_SECRET` y `PORT` desde variables de
-entorno, por lo que solo falta crear el servicio en Railway y cargar
-esas variables apuntando al mismo cluster de Atlas.
+El backend lee sus datos desde variables de entorno, por lo que solo falta
+crear el servicio en Railway y cargar estas variables apuntando al mismo
+cluster de Atlas:
+
+- `MONGODB_URI`
+- `JWT_SECRET` (usar un valor largo y aleatorio, nunca el del ejemplo)
+- `NODE_ENV=production`
+- `PORT` (Railway lo asigna solo)
+
+`NODE_ENV=production` es importante: sin esa variable, la respuesta de
+`/api/auth/forgot-password` incluiria el token de recuperacion, que solo
+debe verse en desarrollo.

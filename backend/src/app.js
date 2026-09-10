@@ -25,7 +25,28 @@ app.use((req, res) => {
 // Manejador central de errores: evita repetir try/catch en cada respuesta.
 app.use((error, req, res, next) => {
   console.error(error);
-  res.status(500).json({ ok: false, mensaje: 'Error interno del servidor' });
+
+  // Clave duplicada en Mongo (por ejemplo, dos registros del mismo correo
+  // enviados al mismo tiempo). Se responde 409 igual que en el controlador.
+  if (error.code === 11000) {
+    return res.status(409).json({
+      ok: false,
+      mensaje: 'El correo ya esta registrado',
+    });
+  }
+
+  // Datos que no cumplen las reglas del modelo de Mongoose.
+  if (error.name === 'ValidationError') {
+    return res.status(400).json({
+      ok: false,
+      mensaje: 'Datos invalidos',
+      errores: Object.values(error.errors).map((e) => e.message),
+    });
+  }
+
+  return res
+    .status(500)
+    .json({ ok: false, mensaje: 'Error interno del servidor' });
 });
 
 module.exports = app;
