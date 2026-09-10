@@ -1,37 +1,65 @@
-/// Validaciones reutilizables para los formularios de autenticación.
-/// Cada método devuelve `null` cuando el valor es válido,
-/// o un mensaje de error para mostrar bajo el campo.
+/// Validaciones reutilizables para los formularios de autenticacion.
 class Validators {
+  const Validators._();
+
   static final RegExp _emailRegExp = RegExp(
-    r'^[\w.\-+]+@([\w\-]+\.)+[a-zA-Z]{2,}$',
+    r'^[\w\.\-\+]+@([\w\-]+\.)+[a-zA-Z]{2,}$',
   );
 
-  static String? nombre(String? value) {
-    final texto = (value ?? '').trim();
-    if (texto.isEmpty) return 'El nombre es obligatorio';
-    if (texto.length < 3) return 'Debe tener al menos 3 caracteres';
+  static String? required(String? value, {String field = 'Este campo'}) {
+    if (value == null || value.trim().isEmpty) {
+      return '$field es obligatorio';
+    }
+    return null;
+  }
+
+  static String? name(String? value) {
+    final empty = required(value, field: 'El nombre');
+    if (empty != null) return empty;
+    if (value!.trim().length < 3) {
+      return 'El nombre debe tener al menos 3 caracteres';
+    }
     return null;
   }
 
   static String? email(String? value) {
-    final texto = (value ?? '').trim();
-    if (texto.isEmpty) return 'El correo es obligatorio';
-    if (!_emailRegExp.hasMatch(texto)) return 'Ingresa un correo válido';
+    final empty = required(value, field: 'El correo');
+    if (empty != null) return empty;
+    if (!_emailRegExp.hasMatch(value!.trim())) {
+      return 'Ingresa un correo valido';
+    }
     return null;
   }
 
   static String? password(String? value) {
-    final texto = value ?? '';
-    if (texto.isEmpty) return 'La contraseña es obligatoria';
-    if (texto.length < 6) return 'Debe tener al menos 6 caracteres';
+    final empty = required(value, field: 'La contrasena');
+    if (empty != null) return empty;
+    if (value!.length < 8) {
+      return 'La contrasena debe tener al menos 8 caracteres';
+    }
+    if (!value.contains(RegExp(r'[A-Za-z]')) ||
+        !value.contains(RegExp(r'[0-9]'))) {
+      return 'Debe combinar letras y numeros';
+    }
     return null;
   }
 
-  /// Confirma que la segunda contraseña coincida con la primera.
+  /// Titulo de una actividad de la agenda (Aprendiz B).
+  static String? taskTitle(String? value) {
+    final empty = required(value, field: 'El titulo');
+    if (empty != null) return empty;
+    if (value!.trim().length < 4) {
+      return 'El titulo debe tener al menos 4 caracteres';
+    }
+    return null;
+  }
+
   static String? confirmPassword(String? value, String original) {
-    final texto = value ?? '';
-    if (texto.isEmpty) return 'Confirma tu contraseña';
-    if (texto != original) return 'Las contraseñas no coinciden';
+    final empty = required(value, field: 'La confirmacion');
+    if (empty != null) return empty;
+    if (value != original) {
+      return 'Las contrasenas no coinciden';
+    }
     return null;
   }
 }
