@@ -1,8 +1,10 @@
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose');
 
-const { conectarDB } = require('./config/database');
+const {
+  conectarDB,
+  describirFalloDeConexion,
+} = require('./config/database');
 const authRoutes = require('./routes/auth.routes');
 
 const app = express();
@@ -14,13 +16,25 @@ app.use(express.json());
 // El healthcheck va ANTES de conectar la base de datos, a proposito:
 // asi responde aunque Mongo falle y permite distinguir un servidor caido
 // de una base de datos mal configurada.
-app.get('/', (req, res) => {
-  res.json({
-    ok: true,
-    mensaje: 'API Agenda funcionando',
-    baseDatos:
-      mongoose.connection.readyState === 1 ? 'conectada' : 'desconectada',
-  });
+app.get('/', async (req, res) => {
+  try {
+    await conectarDB();
+    return res.json({
+      ok: true,
+      mensaje: 'API Agenda funcionando',
+      baseDatos: 'conectada',
+    });
+  } catch (error) {
+    console.error(error);
+    // Responde 200 a proposito: el servidor si esta vivo. Lo que falla es
+    // la base de datos, y la causa se explica en 'detalle'.
+    return res.json({
+      ok: true,
+      mensaje: 'API Agenda funcionando',
+      baseDatos: 'desconectada',
+      detalle: describirFalloDeConexion(error),
+    });
+  }
 });
 
 // En serverless no hay un arranque unico donde conectar la base de datos,

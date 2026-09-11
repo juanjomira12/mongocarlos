@@ -51,4 +51,39 @@ async function conectarDB() {
   return cache.conn;
 }
 
-module.exports = { conectarDB };
+/**
+ * Traduce un fallo de conexion a una frase entendible.
+ *
+ * Devuelve solo una descripcion del tipo de problema, nunca el mensaje
+ * original de Mongoose, que puede contener la cadena de conexion con la
+ * contrasena dentro.
+ */
+function describirFalloDeConexion(error) {
+  const nombre = error?.name || '';
+  const mensaje = error?.message || '';
+
+  if (mensaje.includes('MONGODB_URI')) {
+    return 'Falta la variable MONGODB_URI en el proyecto.';
+  }
+
+  if (/bad auth|Authentication failed|AuthenticationFailed/i.test(mensaje)) {
+    return 'Usuario o contrasena de la base de datos incorrectos.';
+  }
+
+  if (nombre === 'MongoParseError') {
+    return 'La cadena de conexion tiene un formato invalido.';
+  }
+
+  if (/querySrv|ENOTFOUND|getaddrinfo/i.test(mensaje)) {
+    return 'No se encontro el servidor: revisa el nombre del cluster.';
+  }
+
+  if (nombre === 'MongoServerSelectionError') {
+    return 'No se pudo alcanzar el cluster. Revisa que Network Access en ' +
+      'Atlas permita 0.0.0.0/0.';
+  }
+
+  return `Error de conexion (${nombre || 'desconocido'}).`;
+}
+
+module.exports = { conectarDB, describirFalloDeConexion };
