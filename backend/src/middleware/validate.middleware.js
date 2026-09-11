@@ -15,8 +15,12 @@ function validarRegistro(req, res, next) {
   if (!esEmailValido(email)) {
     errores.push('El correo no tiene un formato valido');
   }
-  if (!password || password.length < 6) {
-    errores.push('La contrasena debe tener al menos 6 caracteres');
+  // Misma regla que valida el formulario de registro en Flutter,
+  // para que la app y la API no acepten cosas distintas.
+  if (!password || password.length < 8) {
+    errores.push('La contrasena debe tener al menos 8 caracteres');
+  } else if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+    errores.push('La contrasena debe combinar letras y numeros');
   }
 
   if (errores.length > 0) {

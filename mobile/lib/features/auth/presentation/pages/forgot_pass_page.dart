@@ -8,7 +8,10 @@ import '../widgets/auth_scaffold.dart';
 import '../widgets/auth_submit_button.dart';
 import '../widgets/auth_text_field.dart';
 
-/// Pantalla de recuperacion de contrasena.
+/// Pantalla de recuperacion de contrasena (Aprendiz A).
+///
+/// Fase 1: solo interfaz y validaciones.
+/// En la Fase 3 aqui se llamara a POST /api/auth/forgot-password.
 class ForgotPassPage extends StatefulWidget {
   const ForgotPassPage({super.key});
 
@@ -21,7 +24,7 @@ class _ForgotPassPageState extends State<ForgotPassPage> {
   final _emailController = TextEditingController();
 
   bool _isLoading = false;
-  bool _emailSent = false;
+  bool _sent = false;
 
   @override
   void dispose() {
@@ -33,14 +36,14 @@ class _ForgotPassPageState extends State<ForgotPassPage> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() => _isLoading = true);
-
-    // TODO(fase-2): reemplazar por AuthRepository.forgotPassword() (API REST).
-    await Future<void>.delayed(const Duration(milliseconds: 900));
+    // TODO(fase-3): reemplazar por la peticion HTTP a
+    // ApiConstants.forgotPassword.
+    await Future<void>.delayed(const Duration(milliseconds: 600));
 
     if (!mounted) return;
     setState(() {
       _isLoading = false;
-      _emailSent = true;
+      _sent = true;
     });
   }
 
@@ -48,95 +51,73 @@ class _ForgotPassPageState extends State<ForgotPassPage> {
   Widget build(BuildContext context) {
     return AuthScaffold(
       showBackButton: true,
-      child: _emailSent ? _buildConfirmation() : _buildForm(),
-    );
-  }
-
-  Widget _buildForm() {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const AuthHeader(
-            title: AppStrings.forgotTitle,
-            subtitle: AppStrings.forgotSubtitle,
-            icon: Icons.lock_reset_outlined,
-          ),
-          const SizedBox(height: 32),
-          AuthTextField(
-            controller: _emailController,
-            label: AppStrings.fieldEmail,
-            hint: 'nombre@correo.com',
-            icon: Icons.mail_outline,
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.done,
-            validator: Validators.email,
-            onSubmitted: (_) => _submit(),
-          ),
-          const SizedBox(height: 24),
-          AuthSubmitButton(
-            label: AppStrings.forgotAction,
-            isLoading: _isLoading,
-            onPressed: _submit,
-          ),
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Volver al inicio de sesion'),
-          ),
-        ],
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const AuthHeader(
+              title: AppStrings.forgotTitle,
+              subtitle: AppStrings.forgotSubtitle,
+              icon: Icons.lock_reset_outlined,
+            ),
+            const SizedBox(height: 32),
+            AuthTextField(
+              controller: _emailController,
+              label: AppStrings.fieldEmail,
+              hint: 'nombre@correo.com',
+              icon: Icons.mail_outline,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.done,
+              validator: Validators.email,
+              onSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 28),
+            AuthSubmitButton(
+              label: AppStrings.forgotAction,
+              isLoading: _isLoading,
+              onPressed: _submit,
+            ),
+            // El mensaje de confirmacion solo aparece tras enviar la solicitud.
+            if (_sent) ...[
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.success.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle_outline, color: AppColors.success),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        AppStrings.forgotSentMessage,
+                        style: TextStyle(color: AppColors.success, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 24),
+            Center(
+              child: TextButton.icon(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.arrow_back, size: 18),
+                label: const Text(AppStrings.backToLogin),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildConfirmation() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          height: 56,
-          width: 56,
-          decoration: BoxDecoration(
-            color: AppColors.success.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Icon(
-            Icons.mark_email_read_outlined,
-            color: AppColors.success,
-            size: 30,
-          ),
-        ),
-        const SizedBox(height: 20),
-        const Text(
-          'Revisa tu correo',
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Enviamos un enlace de recuperacion a '
-          '${_emailController.text.trim()}. El enlace caduca en 30 minutos.',
-          style: const TextStyle(
-            fontSize: 15,
-            color: AppColors.textSecondary,
-            height: 1.4,
-          ),
-        ),
-        const SizedBox(height: 32),
-        AuthSubmitButton(
-          label: 'Volver al inicio de sesion',
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        const SizedBox(height: 8),
-        TextButton(
-          onPressed: () => setState(() => _emailSent = false),
-          child: const Text('Usar otro correo'),
-        ),
-      ],
     );
   }
 }

@@ -8,7 +8,10 @@ import '../widgets/auth_scaffold.dart';
 import '../widgets/auth_submit_button.dart';
 import '../widgets/auth_text_field.dart';
 
-/// Pantalla de registro de nuevos usuarios.
+/// Pantalla de registro de usuario (Aprendiz A).
+///
+/// Fase 1: solo interfaz y validaciones.
+/// En la Fase 3 aqui se llamara al endpoint POST /api/auth/register.
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -24,7 +27,6 @@ class _RegisterPageState extends State<RegisterPage> {
   final _confirmController = TextEditingController();
 
   bool _isLoading = false;
-  bool _acceptedTerms = false;
 
   @override
   void dispose() {
@@ -38,30 +40,20 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    if (!_acceptedTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Debes aceptar los terminos y condiciones'),
-          backgroundColor: AppColors.warning,
-        ),
-      );
-      return;
-    }
-
     setState(() => _isLoading = true);
-
-    // TODO(fase-2): reemplazar por AuthRepository.register() contra la API REST.
-    await Future<void>.delayed(const Duration(milliseconds: 900));
+    // TODO(fase-3): reemplazar por la peticion HTTP a ApiConstants.register.
+    await Future<void>.delayed(const Duration(milliseconds: 600));
 
     if (!mounted) return;
     setState(() => _isLoading = false);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Cuenta creada correctamente. Ya puedes iniciar sesion.'),
+        content: Text('Cuenta creada correctamente'),
         backgroundColor: AppColors.success,
       ),
     );
+    // Se vuelve al login para que el usuario entre con su cuenta nueva.
     Navigator.of(context).pop();
   }
 
@@ -83,7 +75,7 @@ class _RegisterPageState extends State<RegisterPage> {
             AuthTextField(
               controller: _nameController,
               label: AppStrings.fieldName,
-              hint: 'Juan Perez',
+              hint: 'Tu nombre completo',
               icon: Icons.person_outline,
               keyboardType: TextInputType.name,
               textInputAction: TextInputAction.next,
@@ -113,46 +105,33 @@ class _RegisterPageState extends State<RegisterPage> {
             AuthTextField(
               controller: _confirmController,
               label: AppStrings.fieldConfirmPassword,
-              hint: 'Repite la contrasena',
+              hint: 'Repite tu contrasena',
               icon: Icons.lock_reset_outlined,
               obscure: true,
               textInputAction: TextInputAction.done,
-              validator: (value) => Validators.confirmPassword(
-                value,
-                _passwordController.text,
-              ),
+              // Se compara contra la contrasena escrita arriba.
+              validator: (value) =>
+                  Validators.confirmPassword(value, _passwordController.text),
               onSubmitted: (_) => _submit(),
             ),
-            const SizedBox(height: 8),
-            CheckboxListTile(
-              value: _acceptedTerms,
-              onChanged: (value) =>
-                  setState(() => _acceptedTerms = value ?? false),
-              controlAffinity: ListTileControlAffinity.leading,
-              contentPadding: EdgeInsets.zero,
-              title: const Text(
-                'Acepto los terminos y condiciones',
-                style: TextStyle(fontSize: 14),
-              ),
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 28),
             AuthSubmitButton(
               label: AppStrings.registerAction,
               isLoading: _isLoading,
               onPressed: _submit,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Wrap(
               alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 const Text(
-                  'Ya tienes cuenta?',
+                  AppStrings.hasAccountQuestion,
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Inicia sesion'),
+                  child: const Text(AppStrings.loginLink),
                 ),
               ],
             ),

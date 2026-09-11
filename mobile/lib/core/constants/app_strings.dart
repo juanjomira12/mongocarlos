@@ -19,6 +19,17 @@ class AppStrings {
   static const String forgotSubtitle =
       'Te enviaremos un enlace de recuperacion a tu correo';
   static const String forgotAction = 'Enviar enlace';
+  static const String forgotSentMessage =
+      'Si el correo esta registrado, recibiras las instrucciones para '
+      'restablecer tu contrasena.';
+
+  // Enlaces de navegacion entre pantallas de auth
+  static const String forgotLink = 'Olvidaste tu contrasena?';
+  static const String noAccountQuestion = 'No tienes cuenta?';
+  static const String registerLink = 'Registrate';
+  static const String hasAccountQuestion = 'Ya tienes cuenta?';
+  static const String loginLink = 'Iniciar sesion';
+  static const String backToLogin = 'Volver al inicio de sesion';
 
   // Campos
   static const String fieldName = 'Nombre completo';
