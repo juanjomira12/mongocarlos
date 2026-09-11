@@ -20,6 +20,16 @@ if (!cache) {
 async function conectarDB() {
   if (cache.conn) return cache.conn;
 
+  // Mensaje explicito: el error que da Mongoose cuando la URI es undefined
+  // no dice que falta configurar la variable, y cuesta entenderlo en los
+  // registros de la plataforma.
+  if (!process.env.MONGODB_URI) {
+    throw new Error(
+      'Falta la variable de entorno MONGODB_URI. En Vercel se define en ' +
+        'Settings > Environment Variables, y despues hay que volver a desplegar.'
+    );
+  }
+
   if (!cache.promise) {
     cache.promise = mongoose
       .connect(process.env.MONGODB_URI, {

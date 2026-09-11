@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const mongoose = require('mongoose');
 
 const { conectarDB } = require('./config/database');
 const authRoutes = require('./routes/auth.routes');
@@ -9,6 +10,18 @@ const app = express();
 // CORS abierto: la app Flutter consumira esta API desde otro origen.
 app.use(cors());
 app.use(express.json());
+
+// El healthcheck va ANTES de conectar la base de datos, a proposito:
+// asi responde aunque Mongo falle y permite distinguir un servidor caido
+// de una base de datos mal configurada.
+app.get('/', (req, res) => {
+  res.json({
+    ok: true,
+    mensaje: 'API Agenda funcionando',
+    baseDatos:
+      mongoose.connection.readyState === 1 ? 'conectada' : 'desconectada',
+  });
+});
 
 // En serverless no hay un arranque unico donde conectar la base de datos,
 // asi que cada peticion se asegura de que la conexion exista. Si ya esta
@@ -20,11 +33,6 @@ app.use(async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
-
-// Ruta de prueba para verificar que el servidor responde.
-app.get('/', (req, res) => {
-  res.json({ ok: true, mensaje: 'API Agenda funcionando' });
 });
 
 app.use('/api/auth', authRoutes);
