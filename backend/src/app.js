@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 
+const { conectarDB } = require('./config/database');
 const authRoutes = require('./routes/auth.routes');
 
 const app = express();
@@ -8,6 +9,18 @@ const app = express();
 // CORS abierto: la app Flutter consumira esta API desde otro origen.
 app.use(cors());
 app.use(express.json());
+
+// En serverless no hay un arranque unico donde conectar la base de datos,
+// asi que cada peticion se asegura de que la conexion exista. Si ya esta
+// abierta, esto no cuesta nada.
+app.use(async (req, res, next) => {
+  try {
+    await conectarDB();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Ruta de prueba para verificar que el servidor responde.
 app.get('/', (req, res) => {

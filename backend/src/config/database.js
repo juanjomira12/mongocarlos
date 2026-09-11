@@ -1,20 +1,44 @@
 const mongoose = require('mongoose');
 
 /**
- * Conecta con MongoDB usando la URI del archivo .env.
- * Si la conexion falla, el proceso termina: es mejor
- * fallar al arrancar que responder peticiones sin base de datos.
+ * Conexion a MongoDB preparada para entornos serverless (Vercel).
+ *
+ * En serverless cada peticion puede ejecutarse en un proceso nuevo, pero
+ * la plataforma reutiliza procesos ya calientes. Por eso la conexion se
+ * guarda en una variable global: si se abriera una conexion por peticion,
+ * Atlas agotaria su limite de conexiones en poco tiempo.
+ *
+ * En local (npm run dev) funciona igual: la primera llamada conecta y las
+ * siguientes devuelven la conexion que ya existe.
  */
+let cache = global._mongooseCache;
+
+if (!cache) {
+  cache = global._mongooseCache = { conn: null, promise: null };
+}
+
 async function conectarDB() {
-  const uri = process.env.MONGODB_URI;
+  if (cache.conn) return cache.conn;
+
+  if (!cache.promise) {
+    cache.promise = mongoose
+      .connect(process.env.MONGODB_URI, {
+        // Sin buffering: si no hay conexion, la consulta falla enseguida
+        // en lugar de quedarse esperando hasta agotar el tiempo limite.
+        bufferCommands: false,
+      })
+      .then((m) => m.connection);
+  }
 
   try {
-    await mongoose.connect(uri);
-    console.log('Conectado a MongoDB');
+    cache.conn = await cache.promise;
   } catch (error) {
-    console.error('Error al conectar con MongoDB:', error.message);
-    process.exit(1);
+    // Se limpia para que la siguiente peticion pueda reintentar.
+    cache.promise = null;
+    throw error;
   }
+
+  return cache.conn;
 }
 
 module.exports = { conectarDB };

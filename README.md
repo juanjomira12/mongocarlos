@@ -130,19 +130,30 @@ minimo 8 caracteres, combinando letras y numeros.
   recuperacion y perfil consumen la API real. La agenda sigue con datos
   en memoria porque sus endpoints todavia no existen.
 
-## Despliegue en Railway
+## Despliegue
 
-El repositorio tiene dos proyectos, asi que en Railway se crean **dos
-servicios** apuntando al mismo repositorio y cambiando el *Root Directory*
-de cada uno.
+La API se despliega en **Vercel** y la app web en **Railway**. Son dos
+plataformas distintas porque cada una encaja con lo que necesita cada parte.
 
-### Servicio 1: la API (`backend`)
+### La API en Vercel
 
-1. **New Project > Deploy from GitHub repo** y elegir este repositorio.
-2. **Settings > Root Directory**: `backend`
-   Sin esto el despliegue falla, porque Railway busca un `package.json`
-   en la raiz y no lo encuentra.
-3. **Variables**:
+Vercel no arranca un servidor: ejecuta una funcion por cada peticion. Por eso
+el backend tiene dos puntos de entrada:
+
+- `src/server.js` para desarrollo local (`npm run dev`), que si abre un puerto.
+- `api/index.js` para Vercel, que solo exporta la aplicacion de Express.
+
+La conexion a MongoDB se guarda en una variable global (`src/config/database.js`)
+y se reutiliza entre invocaciones. Sin eso se abriria una conexion por peticion
+y Atlas agotaria su limite.
+
+**Pasos:**
+
+1. **Add New > Project** y elegir este repositorio.
+2. **Root Directory**: `backend`
+   El repositorio tiene dos proyectos; sin esto Vercel mira la raiz y no
+   encuentra el `package.json`.
+3. **Environment Variables**:
 
    | Variable | Valor |
    |----------|-------|
@@ -150,63 +161,70 @@ de cada uno.
    | `JWT_SECRET` | un valor largo y aleatorio, nunca el del ejemplo |
    | `NODE_ENV` | `production` |
 
-   `PORT` no se define: Railway la asigna y el servidor ya la lee.
+   `PORT` no se define: en serverless no hay un puerto propio.
 
-4. **Settings > Networking > Generate Domain** para obtener la URL publica.
-5. En Atlas, **Network Access** debe permitir `0.0.0.0/0`, porque la IP de
-   salida de Railway cambia.
+   Para generar el `JWT_SECRET`:
 
-Comprobacion:
+   ```
+   node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+   ```
+
+4. **Deploy**.
+5. En Atlas, **Network Access** debe permitir `0.0.0.0/0`: las IP de salida
+   de Vercel cambian y no se pueden poner en una lista.
+
+**Comprobar:**
 
 ```
-curl https://TU-API.up.railway.app/
+curl https://TU-API.vercel.app/
 ```
 
 Debe responder `{"ok":true,"mensaje":"API Agenda funcionando"}`.
 
-### Servicio 2: la app web (`mobile`)
+Y verificar que el token de recuperacion no se filtra:
 
-Este servicio usa el `Dockerfile` que esta en `mobile/`: compila Flutter Web
-y sirve el resultado con nginx.
+```
+curl -X POST https://TU-API.vercel.app/api/auth/forgot-password ^
+  -H "Content-Type: application/json" ^
+  -d "{\"email\":\"alguien@correo.com\"}"
+```
 
-1. En el mismo proyecto, **New > GitHub Repo** y elegir otra vez el repositorio.
+La respuesta **no** debe incluir `tokenRecuperacion`. Si aparece, falta
+`NODE_ENV=production`.
+
+### La app web en Railway
+
+Railway usa el `Dockerfile` de `mobile/`: compila Flutter Web y sirve el
+resultado con nginx. Se hace aqui y no en Vercel porque la imagen de build
+de Vercel no trae Flutter.
+
+1. **New Project > Deploy from GitHub repo** y elegir este repositorio.
 2. **Settings > Root Directory**: `mobile`
    Railway detecta el `Dockerfile` automaticamente.
 3. **Variables**:
 
    | Variable | Valor |
    |----------|-------|
-   | `API_BASE_URL` | `https://TU-API.up.railway.app/api` |
+   | `API_BASE_URL` | `https://TU-API.vercel.app/api` |
 
-   Se usa la URL del servicio 1, **con `/api` al final y sin barra despues**.
+   Con `/api` al final y sin barra despues.
 
 4. **Settings > Networking > Generate Domain**.
 
-> **Importante:** en Flutter la URL de la API es una constante de
-> compilacion, no se lee al arrancar. Si se cambia `API_BASE_URL` hay que
-> volver a desplegar este servicio para que el cambio tenga efecto.
+> **Importante:** en Flutter la URL de la API es una constante de compilacion,
+> no se lee al arrancar. Si se cambia `API_BASE_URL` hay que volver a
+> desplegar este servicio; con reiniciarlo no basta.
 
-### Orden y notas
+### Orden
 
 Primero la API, porque su URL es la que necesita la app web.
 
-La API ya acepta peticiones de cualquier origen (`cors()`), asi que el
-navegador no bloquea las llamadas desde el dominio de la app web. Ambos
-servicios quedan en HTTPS, que es necesario: una pagina servida por HTTPS
-no puede llamar a una API por HTTP.
+La API acepta peticiones de cualquier origen (`cors()`), asi que el navegador
+no bloquea las llamadas desde el dominio de la app web. Ambas quedan en HTTPS,
+que es necesario: una pagina servida por HTTPS no puede llamar a una API por
+HTTP.
 
-### Comprobar que el despliegue quedo bien
+### Comprobacion final
 
-Abrir la URL de la app web y registrar una cuenta. Si entra a la agenda,
-los dos servicios y Atlas estan conectados.
-
-Ademas, conviene verificar que el token de recuperacion no se filtre:
-
-```
-curl -X POST https://TU-API.up.railway.app/api/auth/forgot-password \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"alguien@correo.com\"}"
-```
-
-La respuesta **no** debe incluir `tokenRecuperacion`. Si aparece, falta
-poner `NODE_ENV=production` en el servicio de la API.
+Abrir la URL de la app web y registrar una cuenta. Si entra a la agenda, los
+dos despliegues y Atlas estan conectados.
