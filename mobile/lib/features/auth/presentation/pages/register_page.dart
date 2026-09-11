@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_routes.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/utils/validators.dart';
+import '../controllers/auth_controller.dart';
+import '../widgets/auth_error_message.dart';
 import '../widgets/auth_header.dart';
 import '../widgets/auth_scaffold.dart';
 import '../widgets/auth_submit_button.dart';
@@ -10,10 +14,13 @@ import '../widgets/auth_text_field.dart';
 
 /// Pantalla de registro de usuario (Aprendiz A).
 ///
-/// Fase 1: solo interfaz y validaciones.
-/// En la Fase 3 aqui se llamara al endpoint POST /api/auth/register.
+/// Envia los datos a POST /api/auth/register y, si el registro funciona,
+/// deja la sesion iniciada.
 class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
+  const RegisterPage({super.key, this.controller});
+
+  /// Permite inyectar un controlador propio en las pruebas.
+  final AuthController? controller;
 
   @override
   State<RegisterPage> createState() => _RegisterPageState();
@@ -27,6 +34,9 @@ class _RegisterPageState extends State<RegisterPage> {
   final _confirmController = TextEditingController();
 
   bool _isLoading = false;
+  String? _errorMessage;
+
+  AuthController get _auth => widget.controller ?? AuthController.instance;
 
   @override
   void dispose() {
@@ -40,21 +50,37 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    setState(() => _isLoading = true);
-    // TODO(fase-3): reemplazar por la peticion HTTP a ApiConstants.register.
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+    try {
+      await _auth.register(
+        nombre: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cuenta creada correctamente'),
-        backgroundColor: AppColors.success,
-      ),
-    );
-    // Se vuelve al login para que el usuario entre con su cuenta nueva.
-    Navigator.of(context).pop();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cuenta creada correctamente'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      // El registro ya deja la sesion iniciada, asi que se entra directo.
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.agendaList,
+        (route) => false,
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = error.detail;
+      });
+    }
   }
 
   @override
@@ -72,6 +98,7 @@ class _RegisterPageState extends State<RegisterPage> {
               icon: Icons.person_add_alt_outlined,
             ),
             const SizedBox(height: 32),
+            AuthErrorMessage(_errorMessage),
             AuthTextField(
               controller: _nameController,
               label: AppStrings.fieldName,

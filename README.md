@@ -28,8 +28,19 @@ mobile/lib/
         └── presentation/pages|widgets|controllers/
 ```
 
-Las carpetas `data/` de cada feature estan creadas y vacias: ahi van los
-repositorios que consumiran la API en la Fase 3.
+El modulo de auth ya tiene su capa de datos completa:
+
+```
+core/network/     cliente HTTP y errores de la API
+core/storage/     guarda el JWT en el dispositivo
+features/auth/
+├── data/         datasource, modelo y repositorio contra la API
+├── domain/       entidad User y contrato AuthRepository
+└── presentation/ pantallas y AuthController (estado de la sesion)
+```
+
+Las carpetas `data/` de agenda siguen vacias: ahi van los repositorios
+del Aprendiz B cuando existan sus endpoints.
 
 ## Ejecutar el Flutter
 
@@ -44,6 +55,29 @@ Pruebas:
 ```
 cd mobile
 flutter test
+```
+
+### Apuntar la app a la API
+
+La URL de la API se define al compilar, sin tocar el codigo:
+
+```
+flutter run --dart-define=API_BASE_URL=http://localhost:3000/api
+```
+
+Valor por defecto: `http://10.0.2.2:3000/api`, que es como el emulador de
+Android alcanza el `localhost` del computador. En Flutter web o en escritorio
+hay que pasar `http://localhost:3000/api`. Al desplegar en Railway se usa la
+URL publica (`https://...`).
+
+### Pruebas contra la API real
+
+`flutter test` no necesita backend: las pruebas de `test/integration` se
+omiten solas si el servidor no responde. Para ejecutarlas de verdad hay que
+levantar el backend y pasarle la misma URL:
+
+```
+flutter test test/integration --dart-define=API_BASE_URL=http://localhost:3000/api
 ```
 
 ## Base de datos (MongoDB Atlas)
@@ -89,12 +123,12 @@ minimo 8 caracteres, combinando letras y numeros.
 
 ## Estado por fases
 
-- **Fase 1 (Frontend):** completa. Pantallas de auth, agenda, formulario
-  de tareas y perfil, todas con datos en memoria.
+- **Fase 1 (Frontend):** completa.
 - **Fase 2 (Backend & DB):** completa para autenticacion. Faltan los
   endpoints de tareas del Aprendiz B.
-- **Fase 3 (Integracion):** pendiente. El frontend aun no hace peticiones
-  HTTP; los puntos exactos estan marcados con `TODO(fase-3)`.
+- **Fase 3 (Integracion):** completa para autenticacion. Login, registro,
+  recuperacion y perfil consumen la API real. La agenda sigue con datos
+  en memoria porque sus endpoints todavia no existen.
 
 ## Despliegue en Railway (pendiente)
 

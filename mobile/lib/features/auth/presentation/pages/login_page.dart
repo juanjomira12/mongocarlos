@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/utils/validators.dart';
+import '../controllers/auth_controller.dart';
+import '../widgets/auth_error_message.dart';
 import '../widgets/auth_header.dart';
 import '../widgets/auth_scaffold.dart';
 import '../widgets/auth_submit_button.dart';
@@ -14,7 +17,10 @@ import '../widgets/auth_text_field.dart';
 /// Fase 1: solo interfaz y validaciones.
 /// En la Fase 3 aqui se llamara al endpoint POST /api/auth/login.
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({super.key, this.controller});
+
+  /// Permite inyectar un controlador propio en las pruebas.
+  final AuthController? controller;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -26,6 +32,9 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
 
   bool _isLoading = false;
+  String? _errorMessage;
+
+  AuthController get _auth => widget.controller ?? AuthController.instance;
 
   @override
   void dispose() {
@@ -38,15 +47,27 @@ class _LoginPageState extends State<LoginPage> {
     // Si algun campo es invalido, el propio Form muestra los mensajes.
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    setState(() => _isLoading = true);
-    // TODO(fase-3): reemplazar por la peticion HTTP a ApiConstants.login.
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+    try {
+      await _auth.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
 
-    // Al iniciar sesion se entra a la agenda (Aprendiz B).
-    Navigator.of(context).pushReplacementNamed(AppRoutes.agendaList);
+      if (!mounted) return;
+      // Al iniciar sesion se entra a la agenda (Aprendiz B).
+      Navigator.of(context).pushReplacementNamed(AppRoutes.agendaList);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = error.detail;
+      });
+    }
   }
 
   @override
@@ -62,6 +83,7 @@ class _LoginPageState extends State<LoginPage> {
               subtitle: AppStrings.loginSubtitle,
             ),
             const SizedBox(height: 32),
+            AuthErrorMessage(_errorMessage),
             AuthTextField(
               controller: _emailController,
               label: AppStrings.fieldEmail,

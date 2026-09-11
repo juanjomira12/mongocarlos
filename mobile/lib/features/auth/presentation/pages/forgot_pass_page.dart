@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/utils/validators.dart';
+import '../controllers/auth_controller.dart';
+import '../widgets/auth_error_message.dart';
 import '../widgets/auth_header.dart';
 import '../widgets/auth_scaffold.dart';
 import '../widgets/auth_submit_button.dart';
@@ -10,10 +13,15 @@ import '../widgets/auth_text_field.dart';
 
 /// Pantalla de recuperacion de contrasena (Aprendiz A).
 ///
-/// Fase 1: solo interfaz y validaciones.
-/// En la Fase 3 aqui se llamara a POST /api/auth/forgot-password.
+/// Envia el correo a POST /api/auth/forgot-password.
+///
+/// La API responde siempre lo mismo, exista o no el correo, para no
+/// revelar que cuentas estan registradas.
 class ForgotPassPage extends StatefulWidget {
-  const ForgotPassPage({super.key});
+  const ForgotPassPage({super.key, this.controller});
+
+  /// Permite inyectar un controlador propio en las pruebas.
+  final AuthController? controller;
 
   @override
   State<ForgotPassPage> createState() => _ForgotPassPageState();
@@ -25,6 +33,9 @@ class _ForgotPassPageState extends State<ForgotPassPage> {
 
   bool _isLoading = false;
   bool _sent = false;
+  String? _errorMessage;
+
+  AuthController get _auth => widget.controller ?? AuthController.instance;
 
   @override
   void dispose() {
@@ -35,16 +46,26 @@ class _ForgotPassPageState extends State<ForgotPassPage> {
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    setState(() => _isLoading = true);
-    // TODO(fase-3): reemplazar por la peticion HTTP a
-    // ApiConstants.forgotPassword.
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-
-    if (!mounted) return;
     setState(() {
-      _isLoading = false;
-      _sent = true;
+      _isLoading = true;
+      _errorMessage = null;
     });
+
+    try {
+      await _auth.forgotPassword(_emailController.text.trim());
+
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _sent = true;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = error.detail;
+      });
+    }
   }
 
   @override
@@ -62,6 +83,7 @@ class _ForgotPassPageState extends State<ForgotPassPage> {
               icon: Icons.lock_reset_outlined,
             ),
             const SizedBox(height: 32),
+            AuthErrorMessage(_errorMessage),
             AuthTextField(
               controller: _emailController,
               label: AppStrings.fieldEmail,

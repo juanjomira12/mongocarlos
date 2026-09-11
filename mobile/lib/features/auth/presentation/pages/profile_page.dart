@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_routes.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../agenda/presentation/controllers/agenda_controller.dart';
 import '../../../agenda/presentation/widgets/agenda_summary.dart';
 import '../../domain/entities/user.dart';
+import '../controllers/auth_controller.dart';
+import '../widgets/auth_error_message.dart';
 import '../widgets/auth_submit_button.dart';
 import '../widgets/auth_text_field.dart';
 
@@ -15,13 +18,16 @@ import '../widgets/auth_text_field.dart';
 /// Vive dentro de `features/auth` porque opera sobre la entidad [User], pero
 /// pertenece al modulo del Aprendiz B segun el reparto de la Fase 1.
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key, this.user, this.agenda});
+  const ProfilePage({super.key, this.user, this.agenda, this.auth});
 
   /// Usuario a mostrar. Mientras no exista sesion real se usa un demo.
   final User? user;
 
   /// Permite inyectar un controlador propio en pruebas.
   final AgendaController? agenda;
+
+  /// Controlador de sesion; se puede sustituir en las pruebas.
+  final AuthController? auth;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -34,21 +40,55 @@ class _ProfilePageState extends State<ProfilePage> {
 
   late User _user;
   bool _isSaving = false;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   AgendaController get _agenda => widget.agenda ?? AgendaController.instance;
+  AuthController get _auth => widget.auth ?? AuthController.instance;
 
   @override
   void initState() {
     super.initState();
-    // TODO(fase-2): tomar el usuario autenticado desde la sesion / API.
+    // Se parte del usuario que ya tiene la sesion; si no hay, se pide
+    // a la API con GET /api/auth/profile.
     _user = widget.user ??
-        const User(
-          id: 'demo',
-          name: 'Aprendiz B',
-          email: 'aprendiz.b@sena.edu.co',
-        );
+        _auth.user ??
+        const User(id: '', name: '', email: '');
     _nameController = TextEditingController(text: _user.name);
     _emailController = TextEditingController(text: _user.email);
+
+    if (widget.user == null) _cargarPerfil();
+  }
+
+  /// Trae los datos frescos del usuario autenticado desde la API.
+  Future<void> _cargarPerfil() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final user = await _auth.loadProfile();
+      if (!mounted) return;
+      setState(() {
+        _user = user;
+        _nameController.text = user.name;
+        _emailController.text = user.email;
+        _isLoading = false;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = error.detail;
+      });
+      // Si la sesion vencio se vuelve al login.
+      if (error.isUnauthorized) _volverAlLogin();
+    }
+  }
+
+  void _volverAlLogin() {
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      AppRoutes.login,
+      (route) => false,
+    );
   }
 
   @override
@@ -63,7 +103,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
     setState(() => _isSaving = true);
 
-    // TODO(fase-2): PUT /users/me contra la API REST.
+    // TODO: la API aun no expone un endpoint para actualizar el perfil
+    // (el backend de la Fase 2 solo implementa GET /api/auth/profile).
+    // Mientras tanto el cambio solo se refleja en pantalla.
     await Future<void>.delayed(const Duration(milliseconds: 700));
 
     if (!mounted) return;
@@ -107,11 +149,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (confirmed != true || !mounted) return;
 
-    // TODO(fase-2): limpiar el token almacenado antes de navegar.
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      AppRoutes.login,
-      (route) => false,
-    );
+    // Se borra el token guardado antes de salir.
+    await _auth.logout();
+    if (!mounted) return;
+    _volverAlLogin();
   }
 
   @override
@@ -127,6 +168,12 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  AuthErrorMessage(_errorMessage),
+                  if (_isLoading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
                   _ProfileHeader(user: _user),
                   const SizedBox(height: 24),
                   AnimatedBuilder(
