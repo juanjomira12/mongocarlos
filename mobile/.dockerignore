@@ -1,0 +1,16 @@
+# Artefactos de compilacion y dependencias locales
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Plataformas que no se usan al compilar para web
+android/
+ios/
+
+# No hacen falta dentro de la imagen
+test/
+.idea/
+*.log
+Dockerfile
+.dockerignore

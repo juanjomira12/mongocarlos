@@ -130,17 +130,83 @@ minimo 8 caracteres, combinando letras y numeros.
   recuperacion y perfil consumen la API real. La agenda sigue con datos
   en memoria porque sus endpoints todavia no existen.
 
-## Despliegue en Railway (pendiente)
+## Despliegue en Railway
 
-El backend lee sus datos desde variables de entorno, por lo que solo falta
-crear el servicio en Railway y cargar estas variables apuntando al mismo
-cluster de Atlas:
+El repositorio tiene dos proyectos, asi que en Railway se crean **dos
+servicios** apuntando al mismo repositorio y cambiando el *Root Directory*
+de cada uno.
 
-- `MONGODB_URI`
-- `JWT_SECRET` (usar un valor largo y aleatorio, nunca el del ejemplo)
-- `NODE_ENV=production`
-- `PORT` (Railway lo asigna solo)
+### Servicio 1: la API (`backend`)
 
-`NODE_ENV=production` es importante: sin esa variable, la respuesta de
-`/api/auth/forgot-password` incluiria el token de recuperacion, que solo
-debe verse en desarrollo.
+1. **New Project > Deploy from GitHub repo** y elegir este repositorio.
+2. **Settings > Root Directory**: `backend`
+   Sin esto el despliegue falla, porque Railway busca un `package.json`
+   en la raiz y no lo encuentra.
+3. **Variables**:
+
+   | Variable | Valor |
+   |----------|-------|
+   | `MONGODB_URI` | la cadena de conexion de Atlas |
+   | `JWT_SECRET` | un valor largo y aleatorio, nunca el del ejemplo |
+   | `NODE_ENV` | `production` |
+
+   `PORT` no se define: Railway la asigna y el servidor ya la lee.
+
+4. **Settings > Networking > Generate Domain** para obtener la URL publica.
+5. En Atlas, **Network Access** debe permitir `0.0.0.0/0`, porque la IP de
+   salida de Railway cambia.
+
+Comprobacion:
+
+```
+curl https://TU-API.up.railway.app/
+```
+
+Debe responder `{"ok":true,"mensaje":"API Agenda funcionando"}`.
+
+### Servicio 2: la app web (`mobile`)
+
+Este servicio usa el `Dockerfile` que esta en `mobile/`: compila Flutter Web
+y sirve el resultado con nginx.
+
+1. En el mismo proyecto, **New > GitHub Repo** y elegir otra vez el repositorio.
+2. **Settings > Root Directory**: `mobile`
+   Railway detecta el `Dockerfile` automaticamente.
+3. **Variables**:
+
+   | Variable | Valor |
+   |----------|-------|
+   | `API_BASE_URL` | `https://TU-API.up.railway.app/api` |
+
+   Se usa la URL del servicio 1, **con `/api` al final y sin barra despues**.
+
+4. **Settings > Networking > Generate Domain**.
+
+> **Importante:** en Flutter la URL de la API es una constante de
+> compilacion, no se lee al arrancar. Si se cambia `API_BASE_URL` hay que
+> volver a desplegar este servicio para que el cambio tenga efecto.
+
+### Orden y notas
+
+Primero la API, porque su URL es la que necesita la app web.
+
+La API ya acepta peticiones de cualquier origen (`cors()`), asi que el
+navegador no bloquea las llamadas desde el dominio de la app web. Ambos
+servicios quedan en HTTPS, que es necesario: una pagina servida por HTTPS
+no puede llamar a una API por HTTP.
+
+### Comprobar que el despliegue quedo bien
+
+Abrir la URL de la app web y registrar una cuenta. Si entra a la agenda,
+los dos servicios y Atlas estan conectados.
+
+Ademas, conviene verificar que el token de recuperacion no se filtre:
+
+```
+curl -X POST https://TU-API.up.railway.app/api/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"alguien@correo.com\"}"
+```
+
+La respuesta **no** debe incluir `tokenRecuperacion`. Si aparece, falta
+poner `NODE_ENV=production` en el servicio de la API.
