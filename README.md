@@ -132,8 +132,8 @@ minimo 8 caracteres, combinando letras y numeros.
 
 ## Despliegue
 
-La API se despliega en **Vercel** y la app web en **Railway**. Son dos
-plataformas distintas porque cada una encaja con lo que necesita cada parte.
+Los dos proyectos se despliegan en **Vercel**, cada uno como un proyecto
+propio apuntando al mismo repositorio con distinto Root Directory.
 
 ### La API en Vercel
 
@@ -192,28 +192,34 @@ curl -X POST https://TU-API.vercel.app/api/auth/forgot-password ^
 La respuesta **no** debe incluir `tokenRecuperacion`. Si aparece, falta
 `NODE_ENV=production`.
 
-### La app web en Railway
+### La app web en Vercel
 
-Railway usa el `Dockerfile` de `mobile/`: compila Flutter Web y sirve el
-resultado con nginx. Se hace aqui y no en Vercel porque la imagen de build
-de Vercel no trae Flutter.
+La imagen de build de Vercel no trae Flutter, asi que `vercel-install.sh` lo
+clona del canal stable antes de compilar. Por eso el primer despliegue tarda
+varios minutos mas de lo normal.
 
-1. **New Project > Deploy from GitHub repo** y elegir este repositorio.
-2. **Settings > Root Directory**: `mobile`
-   Railway detecta el `Dockerfile` automaticamente.
-3. **Variables**:
+Despues `vercel-build.sh` compila la app y Vercel publica el contenido de
+`build/web`.
+
+1. **Add New > Project** y elegir este repositorio (otra vez).
+2. **Root Directory**: `mobile`
+3. **Environment Variables**:
 
    | Variable | Valor |
    |----------|-------|
    | `API_BASE_URL` | `https://TU-API.vercel.app/api` |
 
-   Con `/api` al final y sin barra despues.
+   Con `/api` al final y sin barra despues. Si falta, el build se detiene con
+   un error claro en lugar de publicar una web que no conecta con nada.
 
-4. **Settings > Networking > Generate Domain**.
+4. **Deploy**.
 
 > **Importante:** en Flutter la URL de la API es una constante de compilacion,
 > no se lee al arrancar. Si se cambia `API_BASE_URL` hay que volver a
-> desplegar este servicio; con reiniciarlo no basta.
+> desplegar; con reiniciar no basta.
+
+El `Dockerfile` y el `nginx.conf` de `mobile/` se conservan por si se quiere
+desplegar en Railway o en cualquier plataforma que acepte contenedores.
 
 ### Orden
 
