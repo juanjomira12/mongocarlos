@@ -2,47 +2,208 @@
 
 Aplicacion de agenda personal desarrollada entre dos aprendices.
 
-| Modulo | Responsable |
-|--------|-------------|
-| Autenticacion (login, registro, recuperacion) y API REST | Aprendiz A |
-| Agenda, formulario de tareas y perfil de usuario | Aprendiz B |
+## Integrantes
 
-## Estructura
+| Aprendiz | Nombre | Modulo a cargo |
+|----------|--------|----------------|
+| Aprendiz A | Juan Jose Mira | Autenticacion (login, registro, recuperacion), perfil de sesion y API REST |
+| Aprendiz B | Juan Jose Mazo | Agenda, formulario de tareas y pantalla de perfil de usuario |
 
-- `mobile/`  aplicacion Flutter
-- `backend/` API REST Node.js + Express + MongoDB (Mongoose)
+## Enlaces del proyecto
 
-El frontend sigue arquitectura limpia:
+| Recurso | URL |
+|---------|-----|
+| Repositorio (GitHub) | https://github.com/juanjomira12/mongocarlos |
+| API REST (Vercel) | https://mongocarlos-seven.vercel.app |
+| App web (Render) | https://tallerfinalcarlos.onrender.com |
 
-```
-mobile/lib/
-├── core/
-│   ├── constants/     colores, textos, rutas, tema, URLs de la API
-│   └── utils/         validaciones y formato de fechas
-└── features/
-    ├── auth/          Aprendiz A
-    │   ├── domain/entities/
-    │   └── presentation/pages|widgets/
-    └── agenda/        Aprendiz B
-        ├── domain/entities/
-        └── presentation/pages|widgets|controllers/
-```
-
-El modulo de auth ya tiene su capa de datos completa:
+Para comprobar que la API esta viva:
 
 ```
-core/network/     cliente HTTP y errores de la API
-core/storage/     guarda el JWT en el dispositivo
-features/auth/
-├── data/         datasource, modelo y repositorio contra la API
-├── domain/       entidad User y contrato AuthRepository
-└── presentation/ pantallas y AuthController (estado de la sesion)
+curl https://mongocarlos-seven.vercel.app/
 ```
 
-Las carpetas `data/` de agenda siguen vacias: ahi van los repositorios
-del Aprendiz B cuando existan sus endpoints.
+Responde `{"ok":true,"mensaje":"API Agenda funcionando","baseDatos":"conectada"}`.
 
-## Ejecutar el Flutter
+## Tecnologias
+
+| Capa | Stack |
+|------|-------|
+| Movil / Web | Flutter (Dart), arquitectura limpia |
+| Backend | Node.js + Express 5 |
+| Base de datos | MongoDB Atlas con Mongoose |
+| Autenticacion | JWT + bcryptjs |
+| Despliegue | Vercel (API) y Render (app web) |
+
+---
+
+## Estructura del proyecto
+
+El repositorio tiene dos proyectos independientes en la raiz:
+
+```
+mongocarlos/
+├── backend/          API REST Node.js + Express + MongoDB
+├── mobile/           Aplicacion Flutter (Android y web)
+├── .gitignore
+└── README.md
+```
+
+### Encarpetado del backend
+
+```
+backend/
+├── api/
+│   └── index.js                      punto de entrada para Vercel (serverless)
+├── src/
+│   ├── config/
+│   │   └── database.js               conexion a MongoDB (cacheada entre invocaciones)
+│   ├── controllers/
+│   │   └── auth.controller.js        registro, login, perfil, recuperacion
+│   ├── middleware/
+│   │   ├── auth.middleware.js        verifica el JWT de las rutas protegidas
+│   │   └── validate.middleware.js    valida el cuerpo de las peticiones
+│   ├── models/
+│   │   └── usuario.model.js          esquema Mongoose de la coleccion usuarios
+│   ├── routes/
+│   │   └── auth.routes.js            rutas /api/auth/*
+│   ├── app.js                        instancia de Express (cors, json, rutas)
+│   └── server.js                     punto de entrada local (abre el puerto)
+├── .env.example                      plantilla de variables de entorno
+├── .gitignore
+├── .vercelignore
+├── package.json
+├── package-lock.json
+└── vercel.json                       enruta todas las peticiones a api/index.js
+```
+
+**Por que dos puntos de entrada:** Vercel no arranca un servidor, ejecuta una
+funcion por peticion. `src/server.js` es para desarrollo local (`npm run dev`) y
+abre un puerto; `api/index.js` solo exporta la app de Express para Vercel.
+
+### Encarpetado del mobile (Flutter)
+
+```
+mobile/
+├── android/                          proyecto nativo Android
+│   ├── app/
+│   │   ├── src/
+│   │   │   ├── debug/AndroidManifest.xml
+│   │   │   ├── main/
+│   │   │   │   ├── AndroidManifest.xml
+│   │   │   │   ├── kotlin/com/taller/agenda_app/MainActivity.kt
+│   │   │   │   └── res/              iconos, splash y estilos
+│   │   │   └── profile/AndroidManifest.xml
+│   │   └── build.gradle.kts
+│   ├── gradle/wrapper/
+│   ├── build.gradle.kts
+│   ├── gradle.properties
+│   └── settings.gradle.kts
+│
+├── lib/
+│   ├── core/                         codigo compartido por los dos modulos
+│   │   ├── constants/
+│   │   │   ├── api_constants.dart    URLs de la API (incluye las de tareas)
+│   │   │   ├── app_colors.dart
+│   │   │   ├── app_routes.dart
+│   │   │   ├── app_strings.dart
+│   │   │   └── app_theme.dart
+│   │   ├── network/
+│   │   │   ├── api_client.dart       cliente HTTP
+│   │   │   └── api_exception.dart    errores de la API
+│   │   ├── storage/
+│   │   │   └── token_storage.dart    guarda el JWT en el dispositivo
+│   │   └── utils/
+│   │       ├── date_formatter.dart
+│   │       └── validators.dart
+│   │
+│   ├── features/
+│   │   ├── auth/                     >>> Aprendiz A: Juan Jose Mira
+│   │   │   ├── data/
+│   │   │   │   ├── datasources/auth_remote_datasource.dart
+│   │   │   │   ├── models/user_model.dart
+│   │   │   │   └── repositories/auth_repository_impl.dart
+│   │   │   ├── domain/
+│   │   │   │   ├── entities/user.dart
+│   │   │   │   ├── repositories/auth_repository.dart
+│   │   │   │   └── usecases/
+│   │   │   └── presentation/
+│   │   │       ├── controllers/auth_controller.dart
+│   │   │       ├── pages/
+│   │   │       │   ├── login_page.dart
+│   │   │       │   ├── register_page.dart
+│   │   │       │   ├── forgot_pass_page.dart
+│   │   │       │   └── profile_page.dart
+│   │   │       └── widgets/
+│   │   │           ├── auth_error_message.dart
+│   │   │           ├── auth_header.dart
+│   │   │           ├── auth_scaffold.dart
+│   │   │           ├── auth_submit_button.dart
+│   │   │           └── auth_text_field.dart
+│   │   │
+│   │   └── agenda/                   >>> Aprendiz B: Juan Jose Mazo
+│   │       ├── data/                 (vacia: espera los endpoints de tareas)
+│   │       │   ├── datasources/
+│   │       │   ├── models/
+│   │       │   └── repositories/
+│   │       ├── domain/
+│   │       │   ├── entities/
+│   │       │   │   ├── task.dart
+│   │       │   │   ├── task_priority.dart
+│   │       │   │   └── task_status.dart
+│   │       │   ├── repositories/
+│   │       │   └── usecases/
+│   │       └── presentation/
+│   │           ├── controllers/agenda_controller.dart
+│   │           ├── pages/
+│   │           │   ├── agenda_list_page.dart
+│   │           │   └── task_form_page.dart
+│   │           └── widgets/
+│   │               ├── agenda_empty_state.dart
+│   │               ├── agenda_summary.dart
+│   │               ├── priority_dot.dart
+│   │               ├── status_badge.dart
+│   │               └── task_card.dart
+│   │
+│   └── main.dart                     arranque de la app
+│
+├── test/
+│   ├── integration/auth_api_test.dart   se omite solo si no hay backend
+│   ├── support/fake_auth_repository.dart
+│   ├── agenda_test.dart
+│   └── widget_test.dart
+│
+├── web/                              recursos de la version web
+│   ├── icons/
+│   ├── favicon.png
+│   ├── index.html
+│   └── manifest.json
+│
+├── Dockerfile                        build para Render / cualquier contenedor
+├── nginx.conf                        sirve build/web dentro del contenedor
+├── vercel-install.sh                 instala Flutter en el build de Vercel
+├── vercel-build.sh                   compila la app web
+├── vercel.json
+├── analysis_options.yaml
+├── pubspec.yaml
+├── pubspec.lock
+└── README.md
+```
+
+### Como se reparte el trabajo en el codigo
+
+Cada aprendiz trabaja dentro de su carpeta de `features/` y nadie toca la del
+otro. `core/` es territorio compartido: si hay que cambiar algo ahi, se avisa
+antes para no romper el trabajo del companero.
+
+Las carpetas `data/` de agenda siguen vacias (con `.gitkeep`): ahi van los
+repositorios del Aprendiz B cuando existan sus endpoints en la API.
+
+---
+
+## Ejecutar el proyecto
+
+### Flutter
 
 ```
 cd mobile
@@ -57,7 +218,7 @@ cd mobile
 flutter test
 ```
 
-### Apuntar la app a la API
+#### Apuntar la app a la API
 
 La URL de la API se define al compilar, sin tocar el codigo:
 
@@ -67,10 +228,10 @@ flutter run --dart-define=API_BASE_URL=http://localhost:3000/api
 
 Valor por defecto: `http://10.0.2.2:3000/api`, que es como el emulador de
 Android alcanza el `localhost` del computador. En Flutter web o en escritorio
-hay que pasar `http://localhost:3000/api`. Al desplegar en Railway se usa la
-URL publica (`https://...`).
+hay que pasar `http://localhost:3000/api`. En produccion se usa la URL publica
+de Vercel: `https://mongocarlos-seven.vercel.app/api`.
 
-### Pruebas contra la API real
+#### Pruebas contra la API real
 
 `flutter test` no necesita backend: las pruebas de `test/integration` se
 omiten solas si el servidor no responde. Para ejecutarlas de verdad hay que
@@ -79,6 +240,17 @@ levantar el backend y pasarle la misma URL:
 ```
 flutter test test/integration --dart-define=API_BASE_URL=http://localhost:3000/api
 ```
+
+### Backend
+
+```
+cd backend
+npm install
+cp .env.example .env      # editar con la cadena real de Atlas y el JWT_SECRET
+npm run dev
+```
+
+---
 
 ## Base de datos (MongoDB Atlas)
 
@@ -92,18 +264,9 @@ flutter test test/integration --dart-define=API_BASE_URL=http://localhost:3000/a
 No hay que crear la coleccion `usuarios` a mano: Mongoose la crea
 automaticamente al registrar el primer usuario.
 
-## Ejecutar el backend
-
-```
-cd backend
-npm install
-cp .env.example .env      # editar con la cadena real de Atlas y el JWT_SECRET
-npm run dev
-```
-
 ## Endpoints
 
-Implementados (Aprendiz A):
+Implementados (Aprendiz A - Juan Jose Mira):
 
 | Metodo | Ruta                        | Protegido | Descripcion                       |
 |--------|-----------------------------|-----------|-----------------------------------|
@@ -113,8 +276,9 @@ Implementados (Aprendiz A):
 | GET    | /api/auth/profile           | Si (JWT)  | Datos del usuario autenticado     |
 | POST   | /api/auth/forgot-password   | No        | Solicitar recuperacion            |
 
-Pendientes (Aprendiz B): los endpoints CRUD de tareas, ya declarados en
-`mobile/lib/core/constants/api_constants.dart` como `ApiConstants.tasks`.
+Pendientes (Aprendiz B - Juan Jose Mazo): los endpoints CRUD de tareas, ya
+declarados en `mobile/lib/core/constants/api_constants.dart` como
+`ApiConstants.tasks`.
 
 ## Reglas de contrasena
 
@@ -129,13 +293,15 @@ minimo 8 caracteres, combinando letras y numeros.
 - **Fase 3 (Integracion):** completa para autenticacion. Login, registro,
   recuperacion y perfil consumen la API real. La agenda sigue con datos
   en memoria porque sus endpoints todavia no existen.
+- **Fase 4 (Despliegue):** API en Vercel y app web en Render, ambas en linea.
+
+---
 
 ## Despliegue
 
-Los dos proyectos se despliegan en **Vercel**, cada uno como un proyecto
-propio apuntando al mismo repositorio con distinto Root Directory.
-
 ### La API en Vercel
+
+**URL:** https://mongocarlos-seven.vercel.app
 
 Vercel no arranca un servidor: ejecuta una funcion por cada peticion. Por eso
 el backend tiene dos puntos de entrada:
@@ -176,15 +342,15 @@ y Atlas agotaria su limite.
 **Comprobar:**
 
 ```
-curl https://TU-API.vercel.app/
+curl https://mongocarlos-seven.vercel.app/
 ```
 
-Debe responder `{"ok":true,"mensaje":"API Agenda funcionando"}`.
+Debe responder `{"ok":true,"mensaje":"API Agenda funcionando","baseDatos":"conectada"}`.
 
 Y verificar que el token de recuperacion no se filtra:
 
 ```
-curl -X POST https://TU-API.vercel.app/api/auth/forgot-password ^
+curl -X POST https://mongocarlos-seven.vercel.app/api/auth/forgot-password ^
   -H "Content-Type: application/json" ^
   -d "{\"email\":\"alguien@correo.com\"}"
 ```
@@ -192,34 +358,35 @@ curl -X POST https://TU-API.vercel.app/api/auth/forgot-password ^
 La respuesta **no** debe incluir `tokenRecuperacion`. Si aparece, falta
 `NODE_ENV=production`.
 
-### La app web en Vercel
+### La app web en Render
 
-La imagen de build de Vercel no trae Flutter, asi que `vercel-install.sh` lo
-clona del canal stable antes de compilar. Por eso el primer despliegue tarda
-varios minutos mas de lo normal.
+**URL:** https://tallerfinalcarlos.onrender.com
 
-Despues `vercel-build.sh` compila la app y Vercel publica el contenido de
-`build/web`.
+Render construye la imagen del `Dockerfile` de `mobile/`: compila la app con
+Flutter y sirve `build/web` con nginx (`nginx.conf`).
 
-1. **Add New > Project** y elegir este repositorio (otra vez).
+1. **New > Web Service** y elegir este repositorio.
 2. **Root Directory**: `mobile`
-3. **Environment Variables**:
+3. **Runtime**: Docker.
+4. **Environment Variables**:
 
    | Variable | Valor |
    |----------|-------|
-   | `API_BASE_URL` | `https://TU-API.vercel.app/api` |
+   | `API_BASE_URL` | `https://mongocarlos-seven.vercel.app/api` |
 
-   Con `/api` al final y sin barra despues. Si falta, el build se detiene con
-   un error claro en lugar de publicar una web que no conecta con nada.
+   Con `/api` al final y sin barra despues.
 
-4. **Deploy**.
+5. **Create Web Service**.
 
 > **Importante:** en Flutter la URL de la API es una constante de compilacion,
 > no se lee al arrancar. Si se cambia `API_BASE_URL` hay que volver a
 > desplegar; con reiniciar no basta.
 
-El `Dockerfile` y el `nginx.conf` de `mobile/` se conservan por si se quiere
-desplegar en Railway o en cualquier plataforma que acepte contenedores.
+En el plan gratuito de Render el servicio se duerme tras un rato sin uso, asi
+que la primera carga despues de un tiempo inactivo tarda varios segundos.
+
+`mobile/` tambien conserva `vercel.json`, `vercel-install.sh` y
+`vercel-build.sh` por si se quiere publicar la web en Vercel en lugar de Render.
 
 ### Orden
 
@@ -232,5 +399,5 @@ HTTP.
 
 ### Comprobacion final
 
-Abrir la URL de la app web y registrar una cuenta. Si entra a la agenda, los
-dos despliegues y Atlas estan conectados.
+Abrir https://tallerfinalcarlos.onrender.com y registrar una cuenta. Si entra a
+la agenda, los dos despliegues y Atlas estan conectados.
